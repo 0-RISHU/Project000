@@ -1,0 +1,784 @@
+USE [master]
+GO
+IF (EXISTS (SELECT name FROM master.dbo.sysdatabases WHERE ('[' + name + ']' = N'BANKDB' OR name = N'BANKDB')))
+DROP DATABASE BANKDB
+
+CREATE DATABASE BANKDB
+GO
+Use BANKDB
+GO
+
+IF OBJECT_ID('Users')  IS NOT NULL
+DROP TABLE Users
+GO
+
+IF OBJECT_ID('Roles')  IS NOT NULL
+DROP TABLE Roles
+GO
+
+IF OBJECT_ID('Complaint')  IS NOT NULL
+DROP TABLE Complaint
+GO
+
+IF OBJECT_ID('Loan')  IS NOT NULL
+DROP TABLE Loan
+GO
+
+IF OBJECT_ID('LoanPayment')  IS NOT NULL
+DROP TABLE LoanPayment
+GO
+
+IF OBJECT_ID('Settings')  IS NOT NULL
+DROP TABLE Settings
+GO
+
+IF OBJECT_ID('ProfileUpdateRequests')  IS NOT NULL
+DROP TABLE ProfileUpdateRequests
+GO
+
+IF OBJECT_ID('DebitCardDetails')  IS NOT NULL
+DROP TABLE DebitCardDetails
+GO
+
+IF OBJECT_ID('CreditCardDetails')  IS NOT NULL
+DROP TABLE CreditCardDetails
+GO
+
+IF OBJECT_ID('RequestCard')  IS NOT NULL
+DROP TABLE RequestCard
+GO
+
+IF OBJECT_ID('Account')  IS NOT NULL
+DROP TABLE Account
+GO
+
+IF OBJECT_ID('Transactions')  IS NOT NULL
+DROP TABLE Transactions
+GO
+
+CREATE TABLE Roles
+(
+    [RoleId] TINYINT CONSTRAINT pk_RoleId PRIMARY KEY,
+    [RoleName] VARCHAR(20) CONSTRAINT uq_RoleName UNIQUE
+)
+GO
+
+
+CREATE TABLE Users
+(
+    [UserId] int CONSTRAINT pk_UserId PRIMARY KEY,
+    [Name] varchar(50) NOT NULL,
+    [EmailId] VARCHAR(50),
+    [UserPassword] VARCHAR(15) NOT NULL,
+    [Gender] CHAR CONSTRAINT chk_Gender CHECK(Gender='F' OR Gender='M') NOT NULL,
+    [DateOfBirth] DATE CONSTRAINT chk_DateOfBirth CHECK(DateOfBirth<GETDATE()) NOT NULL,
+    [Contact] varchar(10) NOT NULL,
+    [RoleId] TINYINT CONSTRAINT fk_RoleId REFERENCES Roles(RoleId),
+)
+GO
+
+
+
+
+CREATE TABLE Complaint
+(
+    [ComplaintId] int CONSTRAINT pk_ComplaintId PRIMARY KEY,
+    [UserId] INT CONSTRAINT fk_UserId REFERENCES Users(UserId) NOT NULL,
+    [Message] varchar(1000) NOT NULL,
+    [Complaint_Date] DATE NOT NULL
+)
+
+--CREATE TABLE Pin
+--(
+--    [PinId] int constraint pk_PinId Primary key,
+--    [UserId] INT CONSTRAINT fk_PinId REFERENCES Users(UserId) NOT NULL,
+--    [PinCode] varchar(4) not null
+--)
+
+CREATE TABLE Loan
+(
+    [LoanId] int CONSTRAINT pk_LoanId PRIMARY KEY Identity(1,1),
+    [UserId] INT CONSTRAINT fk_UserId2 REFERENCES Users(UserId) NOT NULL,
+    [Amount] NUMERIC NOT NULL ,
+    [InterestRate] NUMERIC(5,2),
+    [Penalty] NUMERIC,
+    [Duration_Months] int NOT NULL,
+    [Status] varchar(10),
+    [ApprovedDate] DATE,
+    [SalarySlip] VARCHAR(50) NOT NULL,
+    [LoanApplication] VARCHAR(50) NOT NULL
+)
+
+--alter table Loan
+--alter column LoanApplication
+--varchar(50)
+
+CREATE TABLE LoanPayment
+(
+    [PaymentId] int CONSTRAINT pk_PaymentId PRIMARY KEY identity(1000,1),
+    [LoanId] int CONSTRAINT fk_LoanId REFERENCES Loan(LoanId) NOT NULL,
+    [Amount] NUMERIC NOT NULL,
+    [DueDate] DATE NOT NULL,
+    [IsPaid] BIT NOT NULL,
+    [PaidDate] date NOT NULL,
+)
+
+create table Settings
+(
+SettingsId int,
+MaxTransactionAmount numeric,
+MaxTransactionsPerMonth int,
+FastFundingLimit numeric,
+FastFundingDuration int,
+FastFundingInterest numeric,
+FastFundingPenality numeric,
+PersonalLoanInterest numeric,
+PersonalLoanPenality numeric
+)
+
+create table ProfileUpdateRequests
+(    
+    RequestId int identity(1,1) primary key,
+    UserId int foreign key references Users(UserId),
+    RequestTime datetime,
+    EmailId varchar(50),
+    Contact varchar(10),
+)
+
+
+CREATE TABLE DebitCardDetails
+(
+  [UserId] int CONSTRAINT fk_userid3  REFERENCES Users(UserId) NOT NULL,
+  [CardNumber] NUMERIC(16) CONSTRAINT pk_CardNumber1 PRIMARY KEY,
+  [NameOnCard] VARCHAR(40) NOT NULL,
+  [CVVNumber] NUMERIC(3) NOT NULL,
+  [IssueDate] DATE NOT NULL CONSTRAINT chk_IssueDate1 CHECK(IssueDate>=GETDATE()),
+  [ExpiryDate] DATE NOT NULL CONSTRAINT chk_ExpiryDate CHECK(ExpiryDate>=GETDATE()),
+  [Balance] DECIMAL(10,2) CONSTRAINT chk_Balance CHECK([Balance]>=0)
+)
+GO
+
+
+
+
+
+CREATE TABLE CreditCardDetails
+(
+  [UserId] int CONSTRAINT fk_userid4  REFERENCES Users(UserId) NOT NULL,
+  [CardNumber] NUMERIC(16) CONSTRAINT pk_CardNumber2 PRIMARY KEY,
+  [NameOnCard] VARCHAR(40) NOT NULL,
+  [CVCNumber] NUMERIC(3) NOT NULL,
+  [IssueDate] DATE NOT NULL CONSTRAINT chk_IssueDate CHECK(IssueDate>=GETDATE()),
+  [ExpiryDate] DATE NOT NULL CONSTRAINT chk_ExpiryDate2 CHECK(ExpiryDate>=GETDATE()),
+  [Balance] DECIMAL(10,2) CONSTRAINT chk_Balance2 CHECK([Balance]>=0)
+)
+GO
+
+
+CREATE TABLE Account
+(
+  [AccountId] INT CONSTRAINT pk_CategoryId PRIMARY KEY IDENTITY,
+  --[UserId] INT CONSTRAINT fk_UserId5 REFERENCES Users(UserId) NOT NULL,
+  [AadhaarNumber] VARCHAR(20),
+  [Balance] NUMERIC,
+  [PHONE] VARCHAR(15),
+  [Status] VARCHAR(20),
+  [Tpin] INT
+);
+GO
+
+CREATE TABLE RequestCard
+(
+[AccountId] int CONSTRAINT fk_accountid REFERENCES Account(AccountId) not null,
+[UserId] int CONSTRAINT fk_userid6  REFERENCES Users(UserId) NOT NULL,
+[RequestId] NUMERIC(10) CONSTRAINT pk_RequestId primary key,
+[Approved] BIT,
+[ApproveDate] DATE NOT NULL CHECK(ApproveDate>=GETDATE()),
+[CardType] VARCHAR(20) NOT NULL CONSTRAINT chk_CardType CHECK (CardType IN ('DEBIT','CREDIT'))
+)
+
+ 
+
+CREATE TABLE Transactions(
+[TransactionId]  INT CONSTRAINT pk_CategoryId2 PRIMARY KEY IDENTITY,
+[SenderAccountId] INT,
+[ReceiverAccountId] INT,
+[Ifsc] VARCHAR(20),
+[Amount] NUMERIC,
+[Date] DATETIME,
+[Note] VARCHAR(255),
+[IsLoanPayment] BIT,
+FOREIGN KEY (SenderAccountId) REFERENCES Account(AccountId),
+FOREIGN KEY (ReceiverAccountId) REFERENCES Account(AccountId)
+);
+
+GO
+
+create FUNCTION ufn_GetUserFullDetails
+(
+    @emailId varchar(50)
+)
+RETURNS TABLE
+AS 
+RETURN
+(
+    SELECT
+     U.[Name],
+     U.EmailId,
+     U.Gender,
+     U.DateOfBirth,
+     U.Contact,
+     D.CardNumber as "DebitCardNumber",
+     C.CardNumber as "CreditCardNumber"
+     from Users U
+     full outer join DebitCardDetails D
+     on U.UserId=D.UserId
+     full outer join CreditCardDetails C
+     on C.UserId=U.UserId
+     where U.EmailId=@emailId
+)
+GO
+
+--select * from  dbo.ufn_GetUserFullDetails('jane.doe@hotmail.com')
+
+GO
+CREATE PROCEDURE usp_UpdateUserProfile
+   @UserId INT,
+   @CurrentPassword VARCHAR(15),
+   @NewEmail VARCHAR(50),
+   @NewContact VARCHAR(10)
+AS
+BEGIN
+   SET NOCOUNT ON;
+
+   -- Validate user
+   IF NOT EXISTS (SELECT 1 FROM Users WHERE UserId = @UserId)
+   BEGIN
+       RAISERROR ('User not found', 16, 1);
+       RETURN;
+   END
+
+   -- Validate current password
+   DECLARE @ExistingPassword VARCHAR(15);
+   SELECT @ExistingPassword = UserPassword FROM Users WHERE UserId = @UserId;
+   IF @ExistingPassword <> @CurrentPassword
+   BEGIN
+       RAISERROR ('Password mismatch', 16, 1);
+       RETURN;
+   END
+
+   -- Validate new email
+   IF @NewEmail IS NOT NULL AND @NewEmail <> ''
+   BEGIN
+       IF EXISTS (SELECT 1 FROM Users WHERE EmailId = @NewEmail AND UserId <> @UserId)
+       BEGIN
+           RAISERROR ('Email already used', 16, 1);
+           RETURN;
+       END
+       IF @NewEmail NOT LIKE '%@%.%' OR @NewEmail NOT LIKE '%[^@]%@[^@]%.[^@.]%'
+       BEGIN
+           RAISERROR ('Invalid email format', 16, 1);
+           RETURN;
+       END
+   END
+
+   -- Validate new contact
+   IF @NewContact IS NOT NULL AND @NewContact <> ''
+   BEGIN
+       IF LEN(@NewContact) <> 10 OR @NewContact LIKE '[0]%' OR @NewContact LIKE '%[^0-9]%'
+       BEGIN
+           RAISERROR ('Invalid contact number', 16, 1);
+           RETURN;
+       END
+   END
+
+   BEGIN TRY
+       -- Update user profile
+       UPDATE Users
+       SET EmailId = @NewEmail,
+           Contact = @NewContact
+       WHERE UserId = @UserId;
+
+       SELECT 'Profile updated successfully' AS Message;
+   END TRY
+   BEGIN CATCH
+       DECLARE @ErrorMessage NVARCHAR(4000);
+       SET @ErrorMessage = ERROR_MESSAGE();
+       RAISERROR (@ErrorMessage, 16, 1);
+   END CATCH
+END
+GO
+
+
+CREATE PROCEDURE usp_TransferMoney
+   @SenderAccountId INT,
+   @ReceiverAccountId INT,
+   @Amount NUMERIC,
+   @Ifsc VARCHAR(20),
+   @Note VARCHAR(255),
+   @Tpin INT
+AS
+BEGIN
+   SET NOCOUNT ON;
+
+   -- Validate PIN
+   IF NOT EXISTS (SELECT 1 FROM Account WHERE AccountId = @SenderAccountId AND Tpin = @Tpin)
+   BEGIN
+       RAISERROR ('Invalid PIN', 16, 1);
+       RETURN;
+   END
+
+   -- Check sufficient balance
+   DECLARE @SenderBalance NUMERIC;
+   SELECT @SenderBalance = Balance FROM Account WHERE AccountId = @SenderAccountId;
+   IF @SenderBalance < @Amount
+   BEGIN
+       RAISERROR ('Insufficient funds', 16, 1);
+       RETURN;
+   END
+
+   -- Validate receiver account
+   IF NOT EXISTS (SELECT 1 FROM Account WHERE AccountId = @ReceiverAccountId AND Ifsc = @Ifsc)
+   BEGIN
+       RAISERROR ('Invalid receiver account', 16, 1);
+       RETURN;
+   END
+
+   -- Check for large transactions (optional)
+   IF @Amount > 100000 -- adjust the amount as per your requirement
+   BEGIN
+       RAISERROR ('Large transaction alert', 16, 1);
+       -- You can add additional logic here to handle large transactions
+   END
+
+   BEGIN TRANSACTION;
+   BEGIN TRY
+       -- Update sender's balance
+       UPDATE Account
+       SET Balance = Balance - @Amount
+       WHERE AccountId = @SenderAccountId;
+
+       -- Update receiver's balance
+       UPDATE Account
+       SET Balance = Balance + @Amount
+       WHERE AccountId = @ReceiverAccountId;
+
+       -- Insert transaction details
+       INSERT INTO Transactions (SenderAccountId, ReceiverAccountId, Amount, Ifsc, Date, Note, IsLoanPayment)
+       VALUES (@SenderAccountId, @ReceiverAccountId, @Amount, @Ifsc, GETDATE(), @Note, 0);
+
+       COMMIT TRANSACTION;
+       SELECT 'Transaction successful' AS Message;
+   END TRY
+   BEGIN CATCH
+       ROLLBACK TRANSACTION;
+       DECLARE @ErrorMessage NVARCHAR(4000);
+       SET @ErrorMessage = ERROR_MESSAGE();
+       RAISERROR (@ErrorMessage, 16, 1);
+   END CATCH
+END
+GO
+
+
+ --View Balance--
+
+CREATE PROCEDURE usp_ViewBalance
+   @AccountId INT,
+   @Tpin INT
+AS
+BEGIN
+   SET NOCOUNT ON;
+
+   -- Check if PIN has been generated
+   IF NOT EXISTS (SELECT 1 FROM Account WHERE AccountId = @AccountId AND Tpin IS NOT NULL)
+   BEGIN
+       RAISERROR ('PIN has not been generated. Please generate a PIN first.', 16, 1);
+       RETURN;
+   END
+
+   -- Validate PIN
+   IF NOT EXISTS (SELECT 1 FROM Account WHERE AccountId = @AccountId AND Tpin = @Tpin)
+   BEGIN
+       RAISERROR ('Invalid PIN', 16, 1);
+       RETURN;
+   END
+
+   -- Retrieve balance
+   SELECT Balance
+   FROM Account
+   WHERE AccountId = @AccountId AND Tpin = @Tpin;
+END
+GO
+
+CREATE PROCEDURE usp_ReceiveMoney
+   @ReceiverAccountId INT,
+   @SenderAccountId INT,
+   @Amount NUMERIC,
+   @Ifsc VARCHAR(20),
+   @Note VARCHAR(255)
+AS
+BEGIN
+   SET NOCOUNT ON;
+
+   -- Validate receiver account
+   IF NOT EXISTS (SELECT 1 FROM Account WHERE AccountId = @ReceiverAccountId AND Ifsc = @Ifsc)
+   BEGIN
+       RAISERROR ('Invalid receiver account or IFSC code', 16, 1);
+       RETURN;
+   END
+
+   BEGIN TRANSACTION;
+   BEGIN TRY
+       -- Update receiver's balance
+       UPDATE Account
+       SET Balance = Balance + @Amount
+       WHERE AccountId = @ReceiverAccountId;
+
+       -- Insert transaction details
+       INSERT INTO Transactions (SenderAccountId, ReceiverAccountId, Amount, Ifsc, Date, Note, IsLoanPayment)
+       VALUES (@SenderAccountId, @ReceiverAccountId, @Amount, @Ifsc, GETDATE(), @Note, 0);
+
+       -- Update total balance of bank (assuming there's a table to track this)
+       -- UPDATE BankBalance SET TotalBalance = TotalBalance + @Amount;
+
+       COMMIT TRANSACTION;
+       SELECT 'Money received successfully' AS Message;
+   END TRY
+   BEGIN CATCH
+       ROLLBACK TRANSACTION;
+       DECLARE @ErrorMessage NVARCHAR(4000);
+       SET @ErrorMessage = ERROR_MESSAGE();
+       RAISERROR (@ErrorMessage, 16, 1);
+   END CATCH
+END
+GO
+
+
+create PROCEDURE usp_RegisterUser
+   @FirstName VARCHAR(50),
+   @LastName VARCHAR(50),
+   @EmailId VARCHAR(50),
+   @Password VARCHAR(15),
+   @ConfirmPassword VARCHAR(15),
+   @Gender CHAR(1),
+   @DateOfBirth DATE,
+   @Contact VARCHAR(10)
+   AS
+    BEGIN
+       SET NOCOUNT ON;
+
+       IF @Password <> @ConfirmPassword
+           RETURN -1 -- Password mismatch
+
+       IF EXISTS (SELECT 1 FROM Users WHERE EmailId = @EmailId)
+           RETURN -2 -- Email already exists
+
+       IF NOT EXISTS (SELECT 1 FROM Account WHERE PHONE = @Contact)
+           RETURN -3 -- Contact not registered
+       DECLARE @NewUserId INT = (SELECT ISNULL(MAX(UserId), 1000) + 1 FROM Users)
+
+       DECLARE @RoleId TINYINT = (SELECT RoleId FROM Roles WHERE RoleName = 'Customer')
+
+       INSERT INTO Users(UserId, Name, EmailId, UserPassword, Gender, DateOfBirth, Contact, RoleId)
+       VALUES(@NewUserId, @FirstName + ' ' + @LastName, @EmailId, @Password, @Gender, @DateOfBirth, @Contact, @RoleId)
+
+       RETURN 1 -- Success
+    END
+GO 
+
+--declare @fname varchar(20) = 'John'
+--declare @lname varchar(20) = 'Doe'
+--declare @EmailId varchar(50) = 'abc@gmail.com'
+--declare  @Password VARCHAR(15)='1233445'
+--declare   @ConfirmPassword VARCHAR(15)='1233445'
+--declare   @Gender CHAR(1)='M'
+--declare   @DateOfBirth DATE='1990-01-01'
+--declare   @Contact VARCHAR(10)='9876543213'
+--DECLARE @ReturnValue INT
+
+--EXEC @ReturnValue = usp_RegisterUser @fname, @lname, @EmailId, @Password, @ConfirmPassword, @Gender, @DateOfBirth,@Contact
+--SELECT @ReturnValue
+
+go
+CREATE PROCEDURE usp_GenerateCreditCard
+    @UserId INT,
+    @NameOnCard VARCHAR(40),
+    @Balance DECIMAL(10,2)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @CardNumber NUMERIC(16) = CAST(RAND() * POWER(10,16) AS NUMERIC(16))
+    DECLARE @CVCNumber NUMERIC(3) = CAST(RAND() * 900 + 100 AS INT)
+    DECLARE @IssueDate DATE = GETDATE()
+    DECLARE @ExpiryDate DATE = DATEADD(YEAR, 5, @IssueDate)
+
+    IF @ExpiryDate <= @IssueDate
+        RETURN -1
+
+    INSERT INTO CreditCardDetails(UserId, CardNumber, NameOnCard, CVCNumber, IssueDate, ExpiryDate, Balance)
+    VALUES(@UserId, @CardNumber, @NameOnCard, @CVCNumber, @IssueDate, @ExpiryDate, @Balance)
+
+    RETURN 1
+END
+GO
+
+CREATE PROCEDURE usp_GenerateDebitCard
+    @UserId INT,
+    @NameOnCard VARCHAR(40),
+    @Balance DECIMAL(10,2)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @CardNumber NUMERIC(16) = CAST(RAND() * POWER(10,16) AS NUMERIC(16))
+    DECLARE @CVVNumber NUMERIC(3) = CAST(RAND() * 900 + 100 AS INT)
+    DECLARE @IssueDate DATE = GETDATE()
+    DECLARE @ExpiryDate DATE = DATEADD(YEAR, 5, @IssueDate)
+
+    IF @ExpiryDate <= @IssueDate
+        RETURN -1
+
+    INSERT INTO DebitCardDetails(UserId, CardNumber, NameOnCard, CVVNumber, IssueDate, ExpiryDate, Balance)
+    VALUES(@UserId, @CardNumber, @NameOnCard, @CVVNumber, @IssueDate, @ExpiryDate, @Balance)
+
+    RETURN 1
+END
+GO
+
+
+
+--INSERT INTO Users (UserId, Name, EmailId, UserPassword, Gender, DateOfBirth, Contact, RoleId)
+--VALUES 
+--(1, 'User One', 'user1@example.com', 'Test@1234', 'M', '1990-01-01', '9000000001', 2),
+--(2, 'User Two', 'user2@example.com', 'Test@1234', 'F', '1991-01-01', '9000000002', 2),
+--(3, 'User Three', 'user3@example.com', 'Test@1234', 'M', '1992-01-01', '9000000003', 2),
+--(4, 'User Four', 'user4@example.com', 'Test@1234', 'F', '1993-01-01', '9000000004', 2),
+--(5, 'User Five', 'user5@example.com', 'Test@1234', 'M', '1994-01-01', '9000000005', 2),
+--(6, 'User Six', 'user6@example.com', 'Test@1234', 'F', '1995-01-01', '9000000006', 2),
+--(7, 'User Seven', 'user7@example.com', 'Test@1234', 'M', '1996-01-01', '9000000007', 2),
+--(8, 'User Eight', 'user8@example.com', 'Test@1234', 'F', '1997-01-01', '9000000008', 2),
+--(9, 'User Nine', 'user9@example.com', 'Test@1234', 'M', '1998-01-01', '9000000009', 2),
+--(10, 'User Ten', 'user10@example.com', 'Test@1234', 'F', '1999-01-01', '9000000010', 2),
+--(11, 'User Eleven', 'user11@example.com', 'Test@1234', 'M', '1980-01-01', '9000000011', 2),
+--(12, 'User Twelve', 'user12@example.com', 'Test@1234', 'F', '1981-01-01', '9000000012', 2),
+--(13, 'User Thirteen', 'user13@example.com', 'Test@1234', 'M', '1982-01-01', '9000000013', 2),
+--(14, 'User Fourteen', 'user14@example.com', 'Test@1234', 'F', '1983-01-01', '9000000014', 2),
+--(15, 'User Fifteen', 'user15@example.com', 'Test@1234', 'M', '1984-01-01', '9000000015', 2),
+--(16, 'User Sixteen', 'user16@example.com', 'Test@1234', 'F', '1985-01-01', '9000000016', 2),
+--(17, 'User Seventeen', 'user17@example.com', 'Test@1234', 'M', '1986-01-01', '9000000017', 2),
+--(18, 'User Eighteen', 'user18@example.com', 'Test@1234', 'F', '1987-01-01', '9000000018', 2),
+--(19, 'User Nineteen', 'user19@example.com', 'Test@1234', 'M', '1988-01-01', '9000000019', 2),
+--(20, 'User Twenty', 'user20@example.com', 'Test@1234', 'F', '1989-01-01', '9000000020', 2),
+--(21, 'User21', 'user21@example.com', 'Test@1234', 'M', '1990-05-01', '9000000021', 2),
+--(22, 'User22', 'user22@example.com', 'Test@1234', 'F', '1991-05-01', '9000000022', 2),
+--(23, 'User23', 'user23@example.com', 'Test@1234', 'M', '1992-05-01', '9000000023', 2),
+--(24, 'User24', 'user24@example.com', 'Test@1234', 'F', '1993-05-01', '9000000024', 2),
+--(25, 'User25', 'user25@example.com', 'Test@1234', 'M', '1994-05-01', '9000000025', 2),
+--(26, 'User26', 'user26@example.com', 'Test@1234', 'F', '1995-05-01', '9000000026', 2),
+--(27, 'User27', 'user27@example.com', 'Test@1234', 'M', '1996-05-01', '9000000027', 2),
+--(28, 'User28', 'user28@example.com', 'Test@1234', 'F', '1997-05-01', '9000000028', 2),
+--(29, 'User29', 'user29@example.com', 'Test@1234', 'M', '1998-05-01', '9000000029', 2),
+--(30, 'User30', 'user30@example.com', 'Test@1234', 'F', '1999-05-01', '9000000030', 2),
+--(31, 'User31', 'user31@example.com', 'Test@1234', 'M', '1990-06-01', '9000000031', 2),
+--(32, 'User32', 'user32@example.com', 'Test@1234', 'F', '1991-06-01', '9000000032', 2),
+--(33, 'User33', 'user33@example.com', 'Test@1234', 'M', '1992-06-01', '9000000033', 2),
+--(34, 'User34', 'user34@example.com', 'Test@1234', 'F', '1993-06-01', '9000000034', 2),
+--(35, 'User35', 'user35@example.com', 'Test@1234', 'M', '1994-06-01', '9000000035', 2),
+--(36, 'User36', 'user36@example.com', 'Test@1234', 'F', '1995-06-01', '9000000036', 2),
+--(37, 'User37', 'user37@example.com', 'Test@1234', 'M', '1996-06-01', '9000000037', 2),
+--(38, 'User38', 'user38@example.com', 'Test@1234', 'F', '1997-06-01', '9000000038', 2),
+--(39, 'User39', 'user39@example.com', 'Test@1234', 'M', '1998-06-01', '9000000039', 2),
+--(40, 'User40', 'user40@example.com', 'Test@1234', 'F', '1999-06-01', '9000000040', 2),
+--(41, 'User41', 'user41@example.com', 'Test@1234', 'M', '1990-07-01', '9000000041', 2),
+--(42, 'User42', 'user42@example.com', 'Test@1234', 'F', '1991-07-01', '9000000042', 2),
+--(43, 'User43', 'user43@example.com', 'Test@1234', 'M', '1992-07-01', '9000000043', 2),
+--(44, 'User44', 'user44@example.com', 'Test@1234', 'F', '1993-07-01', '9000000044', 2),
+--(45, 'User45', 'user45@example.com', 'Test@1234', 'M', '1994-07-01', '9000000045', 2),
+--(46, 'User46', 'user46@example.com', 'Test@1234', 'F', '1995-07-01', '9000000046', 2),
+--(47, 'User47', 'user47@example.com', 'Test@1234', 'M', '1996-07-01', '9000000047', 2),
+--(48, 'User48', 'user48@example.com', 'Test@1234', 'F', '1997-07-01', '9000000048', 2)
+
+INSERT INTO Roles (RoleId,RoleName)
+VALUES 
+    (1,'Admin'),
+    (2,'Customer');
+
+
+INSERT INTO Account (AadhaarNumber, Balance,Ifsc ,PHONE, Status, Tpin)
+VALUES 
+('656789123456', 43500.75, '9876543210','XYZ123', 'ACTIVE', 1234),
+('234567890123', 21000.00, '9876543211','XYZ123', 'ACTIVE', 5678),
+('987654321234', 13500.20, '9876543212','XYZ123', 'INACTIVE', 4321),
+('123456789012', 8800.00, '9876543213','XYZ123', 'ACTIVE', 1111);
+/*('456789012345', 45000.00, '9876543214', 'ACTIVE', 9999),
+('876543210987', 200.00, '9876543215', 'INACTIVE', 3456),
+('789456123012', 100000.00, '9876543216', 'ACTIVE', 2580),
+('321654987654', 7600.40, '9876543217', 'ACTIVE', 6666),
+('234567891011', 50999.99, '9876543218', 'INACTIVE', 1212),
+('135791357913', 72000.00, '9876543219', 'ACTIVE', 3030),
+('192837465012', 19800.55, '9876543220', 'ACTIVE', 4040),
+('567812348765', 28000.00, '9876543221', 'INACTIVE', 4545),
+('298374650129', 64000.80, '9876543222', 'ACTIVE', 5050),
+('657483920134', 975.00, '9876543223', 'ACTIVE', 1122),
+('198237465081', 30500.00, '9876543224', 'ACTIVE', 7878),
+('340129384756', 1200.99, '9876543225', 'INACTIVE', 6767),
+('120984375610', 49200.00, '9876543226', 'ACTIVE', 9898),
+('657382910238', 60500.00, '9876543227', 'INACTIVE', 1414),
+('764382910273', 4200.55, '9876543228', 'ACTIVE', 2525),
+('839201837465', 108000.00, '9876543229', 'ACTIVE', 5656),
+('918273645092', 9000.00, '9876543230', 'INACTIVE', 3434),
+('748392018374', 50500.45, '9876543231', 'ACTIVE', 7878),
+('849302193847', 3000.00, '9876543232', 'INACTIVE', 6767),
+('849302198877', 1400.00, '9876543233', 'ACTIVE', 3232),
+('928374650132', 15000.00, '9876543234', 'ACTIVE', 4545),
+('102938475612', 49999.99, '9876543235', 'INACTIVE', 3434),
+('302948576123', 32100.00, '9876543236', 'ACTIVE', 2323),
+('234987561230', 8888.00, '9876543237', 'INACTIVE', 9090),
+('394857610238', 62000.00, '9876543238', 'ACTIVE', 7878),
+('120398475600', 76000.00, '9876543239', 'ACTIVE', 8989),
+('657382910299', 99000.90, '9876543240', 'INACTIVE', 6767),
+('728391027384', 42000.00, '9876543241', 'ACTIVE', 5555),
+('182736450129', 500.50, '9876543242', 'INACTIVE', 2929),
+('837465012938', 42000.00, '9876543243', 'ACTIVE', 4343),
+('192837465019', 32000.75, '9876543244', 'ACTIVE', 1234),
+('230948756192', 7100.20, '9876543245', 'INACTIVE', 4545),
+('234876512304', 11000.00, '9876543246', 'ACTIVE', 7890),
+('398475610239', 6400.00, '9876543247', 'ACTIVE', 9090),
+('209384756128', 9800.00, '9876543248', 'INACTIVE', 8765),
+('849302198888', 87500.10, '9876543249', 'ACTIVE', 3030),
+('849302197777', 76000.00, '9876543250', 'INACTIVE', 2323),
+('849302196666', 10900.00, '9876543251', 'ACTIVE', 9898),
+('849302195555', 30500.00, '9876543252', 'ACTIVE', 1122),
+('849302194444', 28000.00, '9876543253', 'ACTIVE', 2323),
+('849302193333', 22000.00, '9876543254', 'INACTIVE', 7878),
+('849302192222', 95000.00, '9876543255', 'ACTIVE', 1212),
+('849302191111', 10200.00, '9876543256', 'ACTIVE', 1010),
+('849302190000', 58000.00, '9876543257', 'INACTIVE', 7878),
+('849302189999', 15500.00, '9876543258', 'ACTIVE', 2020),
+('849302188888', 20500.00, '9876543259', 'ACTIVE', 3030),
+('849302188889', 20500.00, '1234567890', 'ACTIVE', 3090);*/
+ SET IDENTITY_INSERT Account ON;
+
+INSERT INTO Account (AccountId, [Aadhaar Number], Balance, Ifsc, PHONE, Status, Tpin)
+VALUES 
+(101, '111122223333', 1000.00, '9876543210','XYZ123', 'Active', 1234),
+(102, '222233334444', 5000.00, '8765432109','XYZ123', 'Active', 5678),
+(103, '333344445555', 2000.00, '7654321098','XYZ123', 'Inactive', 9012),
+(104, '444455556666', 8000.00, '6543210987','XYZ123', 'Active', 3456),
+(105, '555566667777', 3000.00, '5432109876','XYZ123', 'Inactive', 7890);
+
+SET IDENTITY_INSERT Account OFF;
+
+
+ 
+
+
+
+INSERT INTO Users (UserId, Name, EmailId, UserPassword, Gender, DateOfBirth, Contact, RoleId)
+VALUES
+(1, 'John Smith', 'john.smith@gmail.com', 'Password@123', 'M', '1990-05-15', '9876543210', 2),
+(2, 'Jane Doe', 'jane.doe@hotmail.com', 'Password@123', 'F', '1988-08-22', '9876543211', 2),
+(3, 'Samuel Brown', 'samuel.brown@yahoo.com', 'Password@123', 'M', '1985-12-30', '9876543212', 2),
+(4, 'Emily Davis', 'emily.davis@gmail.com', 'Password@123', 'F', '1992-03-18', '9876543213', 2),
+(5, 'Michael Johnson', 'michael.johnson@hotmail.com', 'Password@123', 'M', '1987-06-25', '9876543214', 2),
+(6, 'Olivia Wilson', 'olivia.wilson@yahoo.com', 'Password@123', 'F', '1995-09-10', '9876543215', 2),
+(7, 'Daniel Lee', 'daniel.lee@gmail.com', 'Password@123', 'M', '1993-11-05', '9876543216', 2),
+(8, 'Sophia Harris', 'sophia.harris@hotmail.com', 'Password@123', 'F', '1990-07-18', '9876543217', 2),
+(9, 'David Clark', 'david.clark@gmail.com', 'Password@123', 'M', '1989-04-03', '9876543218', 2),
+(10, 'Mia Walker', 'mia.walker@yahoo.com', 'Password@123', 'F', '1997-01-27', '9876543219', 2),
+(11, 'Ethan Martinez', 'ethan.martinez@gmail.com', 'Password@123', 'M', '1991-05-22', '9876543220', 2),
+(12, 'Amelia Rodriguez', 'amelia.rodriguez@gmail.com', 'Password@123', 'F', '1994-02-11', '9876543221', 2),
+(13, 'Lucas King', 'lucas.king@hotmail.com', 'Password@123', 'M', '1988-07-06', '9876543222', 2),
+(14, 'Charlotte Lewis', 'charlotte.lewis@yahoo.com', 'Password@123', 'F', '1992-11-15', '9876543223', 2),
+(15, 'Oliver Scott', 'oliver.scott@gmail.com', 'Password@123', 'M', '1996-12-04', '9876543224', 2),
+(16, 'Isabella Young', 'isabella.young@hotmail.com', 'Password@123', 'F', '1993-09-23', '9876543225', 2),
+(17, 'Amos Carter', 'amos.carter@yahoo.com', 'Password@123', 'M', '1986-10-30', '9876543226', 2),
+(18, 'Zoe Walker', 'zoe.walker@gmail.com', 'Password@123', 'F', '1998-08-12', '9876543227', 2),
+(19, 'William Allen', 'william.allen@gmail.com', 'Password@123', 'M', '1987-11-19', '9876543228', 2),
+(20, 'Lily Adams', 'lily.adams@hotmail.com', 'Password@123', 'F', '1991-04-13', '9876543229', 2),
+(21, 'Benjamin Green', 'benjamin.green@yahoo.com', 'Password@123', 'M', '1992-09-14', '9876543230', 2),
+(22, 'Ella Perez', 'ella.perez@gmail.com', 'Password@123', 'F', '1994-03-06', '9876543231', 2),
+(23, 'Jack Mitchell', 'jack.mitchell@hotmail.com', 'Password@123', 'M', '1989-08-17', '9876543232', 2),
+(24, 'Grace Roberts', 'grace.roberts@yahoo.com', 'Password@123', 'F', '1995-12-20', '9876543233', 2),
+(25, 'Nathan Lewis', 'nathan.lewis@gmail.com', 'Password@123', 'M', '1993-01-11', '9876543234', 2),
+(26, 'Ava Walker', 'ava.walker@hotmail.com', 'Password@123', 'F', '1998-10-02', '9876543235', 2),
+(27, 'Jacob Turner', 'jacob.turner@yahoo.com', 'Password@123', 'M', '1990-05-06', '9876543236', 2),
+(28, 'Luna Walker', 'luna.walker@gmail.com', 'Password@123', 'F', '1996-07-19', '9876543237', 2),
+(29, 'Evan Collins', 'evan.collins@hotmail.com', 'Password@123', 'M', '1985-12-10', '9876543238', 2),
+(30, 'Chloe Harris', 'chloe.harris@gmail.com', 'Password@123', 'F', '1992-02-28', '9876543239', 2),
+(31, 'Matthew Gonzalez', 'matthew.gonzalez@yahoo.com', 'Password@123', 'M', '1994-08-14', '9876543240', 2),
+(32, 'Sophie Perez', 'sophie.perez@gmail.com', 'Password@123', 'F', '1997-03-23', '9876543241', 2),
+(33, 'Alexander Robinson', 'alexander.robinson@hotmail.com', 'Password@123', 'M', '1990-06-09', '9876543242', 2),
+(34, 'Chloe Turner', 'chloe.turner@yahoo.com', 'Password@123', 'F', '1995-11-21', '9876543243', 2),
+(35, 'Aidan Evans', 'aidan.evans@gmail.com', 'Password@123', 'M', '1992-09-13', '9876543244', 2),
+(36, 'Harper Scott', 'harper.scott@yahoo.com', 'Password@123', 'F', '1996-01-30', '9876543245', 2),
+(37, 'Sebastian King', 'sebastian.king@gmail.com', 'Password@123', 'M', '1993-04-11', '9876543246', 2),
+(38, 'Amelia Edwards', 'amelia.edwards@hotmail.com', 'Password@123', 'F', '1997-11-24', '9876543247', 2),
+(39, 'Harrison Mitchell', 'harrison.mitchell@yahoo.com', 'Password@123', 'M', '1991-01-08', '9876543248', 2),
+(40, 'Aria Brooks', 'aria.brooks@gmail.com', 'Password@123', 'F', '1994-06-05', '9876543249', 2),
+(41, 'Jackson Diaz', 'jackson.diaz@yahoo.com', 'Password@123', 'M', '1989-05-18', '9876543250', 2),
+(42, 'Emma Lee', 'emma.lee@gmail.com', 'Password@123', 'F', '1997-02-10', '9876543251', 2),
+(43, 'Owen Wright', 'owen.wright@hotmail.com', 'Password@123', 'M', '1995-07-20', '9876543252', 2),
+(44, 'Maya Foster', 'maya.foster@yahoo.com', 'Password@123', 'F', '1993-11-22', '9876543253', 2),
+(45, 'Tyler Sanchez', 'tyler.sanchez@gmail.com', 'Password@123', 'M', '1991-10-14', '9876543254', 2)
+
+
+INSERT INTO Loan (UserId, Amount, InterestRate, Penalty, Duration_Months, Status, ApprovedDate, SalarySlip, LoanApplication)
+VALUES
+(1, 50000, 5.00, 2000, 24, 'Approved', '2023-01-15', 'salary_slip_1.pdf', 'application_1.pdf'),
+(2, 70000, 4.50, 2500, 36, 'Pending', '2023-02-10', 'salary_slip_2.pdf', 'application_2.pdf'),
+(3, 100000, 6.00, 3000, 48, 'Approved', '2023-03-22', 'salary_slip_3.pdf', 'application_3.pdf'),
+(4, 20000, 5.50, 1500, 12, 'Rejected', '2023-04-05', 'salary_slip_4.pdf', 'application_4.pdf'),
+(5, 150000, 7.00, 5000, 60, 'Approved', '2023-05-15', 'salary_slip_5.pdf', 'application_5.pdf'),
+(6, 25000, 5.00, 1000, 24, 'Approved', '2023-06-01', 'salary_slip_6.pdf', 'application_6.pdf'),
+(7, 120000, 6.25, 4000, 36, 'Pending', '2023-07-20', 'salary_slip_7.pdf', 'application_7.pdf'),
+(8, 30000, 5.75, 1200, 24, 'Rejected', '2023-08-10', 'salary_slip_8.pdf', 'application_8.pdf'),
+(9, 50000, 6.50, 2500, 48, 'Approved', '2023-09-15', 'salary_slip_9.pdf', 'application_9.pdf'),
+(10, 80000, 5.25, 3200, 36, 'Pending', '2023-10-02', 'salary_slip_10.pdf', 'application_10.pdf'),
+(11, 60000, 5.75, 2000, 24, 'Approved', '2023-11-05', 'salary_slip_11.pdf', 'application_11.pdf'),
+(12, 95000, 6.00, 3500, 60, 'Approved', '2023-12-15', 'salary_slip_12.pdf', 'application_12.pdf'),
+(13, 45000, 5.50, 1800, 36, 'Rejected', '2024-01-25', 'salary_slip_13.pdf', 'application_13.pdf'),
+(14, 70000, 6.00, 2500, 48, 'Approved', '2024-02-11', 'salary_slip_14.pdf', 'application_14.pdf'),
+(15, 85000, 6.25, 2800, 60, 'Pending', '2024-03-02', 'salary_slip_15.pdf', 'application_15.pdf'),
+(16, 100000, 6.50, 3000, 36, 'Approved', '2024-04-20', 'salary_slip_16.pdf', 'application_16.pdf'),
+(17, 50000, 5.75, 2000, 24, 'Rejected', '2024-05-15', 'salary_slip_17.pdf', 'application_17.pdf'),
+(18, 60000, 5.50, 2200, 48, 'Approved', '2024-06-10', 'salary_slip_18.pdf', 'application_18.pdf'),
+(19, 150000, 7.25, 5000, 60, 'Approved', '2024-07-19', 'salary_slip_19.pdf', 'application_19.pdf'),
+(20, 75000, 5.75, 3000, 36, 'Pending', '2024-08-01', 'salary_slip_20.pdf', 'application_20.pdf'),
+(21, 50000, 5.00, 2500, 24, 'Approved', '2024-09-05', 'salary_slip_21.pdf', 'application_21.pdf'),
+(22, 85000, 6.00, 3200, 48, 'Approved', '2024-10-25', 'salary_slip_22.pdf', 'application_22.pdf'),
+(23, 110000, 6.50, 3500, 36, 'Rejected', '2024-11-30', 'salary_slip_23.pdf', 'application_23.pdf'),
+(24, 65000, 5.50, 2200, 24, 'Approved', '2024-12-10', 'salary_slip_24.pdf', 'application_24.pdf'),
+(25, 95000, 6.25, 2800, 60, 'Approved', '2025-01-02', 'salary_slip_25.pdf', 'application_25.pdf'),
+(26, 45000, 5.75, 1600, 36, 'Pending', '2025-02-10', 'salary_slip_26.pdf', 'application_26.pdf'),
+(27, 70000, 6.00, 2500, 48, 'Rejected', '2025-03-12', 'salary_slip_27.pdf', 'application_27.pdf'),
+(28, 120000, 6.50, 4000, 36, 'Approved', '2025-04-05', 'salary_slip_28.pdf', 'application_28.pdf'),
+(29, 80000, 5.75, 3000, 60, 'Approved', '2025-05-01', 'salary_slip_29.pdf', 'application_29.pdf'),
+(30, 65000, 5.50, 2200, 48, 'Pending', '2025-06-15', 'salary_slip_30.pdf', 'application_30.pdf');
+ 
+
+
+--ALTER TABLE Transactions DROP COLUMN Note
+
+
+INSERT INTO Transactions(SenderAccountId, ReceiverAccountId, Amount, Date, IsLoanPayment)
+VALUES
+(1, 4,100, '2025-03-01', 0),
+(2, 20, 300, '2025-04-13', 0),
+(8, 15, 200, '2024-11-10', 0),
+(14, 23, 500, '2025-02-11', 0),
+(19, 45, 1000, '2024-12-10', 0),
+(27, 34, 2015, '2025-10-03', 0) 
+
+insert into DebitCardDetails values(1,1000000000000000, 'John Smith', 123, '2025-01-01', '2027-01-01',43501);
+
+
+Msg 207, Level 16, State 1, Procedure usp_TransferMoney, Line 341
+Invalid column name 'Ifsc'.
+Msg 207, Level 16, State 1, Procedure usp_ReceiveMoney, Line 424
+Invalid column name 'Ifsc'.
+Msg 207, Level 16, State 1, Line 608
+Invalid column name 'Ifsc'.
+Msg 207, Level 16, State 1, Line 608
+Invalid column name 'Ifsc'.
